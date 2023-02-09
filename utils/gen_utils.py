@@ -5,70 +5,17 @@ Created on Wed Sep 30 19:54:55 2020
 @author: YaronWinter
 """
 from sklearn.feature_extraction.text import CountVectorizer
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 import torch.optim as optim
 import torch.nn as nn
-import torchvision
-import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 from torch.utils.data import RandomSampler
 from torch.utils.data import SequentialSampler
 from torch.utils.data import TensorDataset
 
-DATA_FOLDER = 'C:/WorkEnv/data_sets/ACLIMDB/'
-LOGS_FOLDER = 'C:/WorkEnv/Spyder/Logs/'
-IMDB_TRAIN_FOLDER = 'C:/WorkEnv/data_sets/ACLIMDB/aclimdb/train/'
-IMDB_TEST_FOLDER = 'C:/WorkEnv/data_sets/ACLIMDB/aclimdb/test/'
-ELEC_FOLDER = 'C:/WorkEnv/data_sets/Elec/'
 
-TEXT_FIELD_NAME = 'review'
-LABEL_FIELD_NAME = 'sentiment'
-W2V_3G_MC7_SG_UG_NOHEAD = 'w2v_mc7_3g_d200_nohead.txt'
-W2V_3G_MC7_SG_UG_WITHHEAD = 'w2v_mc7_3g_d200.txt'
-IMDB_TRAIN_SET = 'imdb_train_set.csv'
-IMDB_VAL_SET = 'imdb_val_set.csv'
-IMDB_TEST_SET = 'imdb_test.csv'
-ROTTEN_TOMAT_TRAIN_SET = 'rt_train_set.csv'
-ROTTEN_TOMAT_VAL_SET = 'rt_val_set.csv'
-ROTTEN_TOMAT_TEST_SET = 'rotten_tomatos_test.csv'
-RANDOM_SAMPLING = 'random'
-SEQUENTIAL_SAMPLING = 'sequential'
-LENGTHS_FRAME = 12
-MIN_OCCURRENCES_BY_FAME = 500
-TOKENS_COL = 'tokens'
-LENGTHS_COL = 'lengths'
-REVIEW_COL = 'review'
-SENTIMENT_COL = 'sentiment'
-PAD_LABEL = '<pad>'
-UNK_LABEL = '<unk>'
-
-EARLY_STOP_MAX_NO_IMP = 2
 RHO = 0.95
-BATCH_SIZE = 50
-ADADELATA_OPT = 'adadelta'
-SGD_OPT = 'sgd'
-ADAM_OPT = 'adam'
-CROSS_ENTROP_LOSS = 'cross_entropy_loss'
-BCE_LOSS = 'bce_loss'
-
-OUT_FOLDER = 'C:/WorkEnv/Spyder/Logs/'
-TRAIN_SET = 'train_set'
-VALIDATION_SET = 'validation_set'
-TEST_SET = 'test_set'
-W2V_FILE = 'w2v_file'
-NUM_EPOCHS = 'num_epochs'
-LEARNING_RATE = 'lr'
-FILTER_WINDOWS = 'windows'
-FILTER_WIDTH = 'width'
-OPTIMIZER_NAME = 'opt_name'
-LOSS_FUNCTION = 'loss_func'
-FREEZE_W2V = 'freeze_w2v'
-OUT_FILE = 'out_file'
-NUM_LOOPS = 'num_loops'
-SEED_VALUE = 'seed_value'
-MIN_VOC_FREQ = 'min_voc_freq'
 
 def intersect_strings(s, u):
     l = [s, u]
@@ -83,34 +30,6 @@ def intersect_strings(s, u):
     for x in jdict:
         print(x + ': ' + str(jdict[x]))
     return
-
-def imshow(img):
-    img = img / 2 + 0.5     # unnormalize
-    npimg = img.numpy()
-    plt.imshow(np.transpose(npimg, (1, 2, 0)))
-    plt.show()
-    
-    
-def load_cifar_data():
-    transform = transforms.Compose(
-        [transforms.ToTensor(),
-         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))])
-    
-    trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                            download=True, transform=transform)
-    trainloader = torch.utils.data.DataLoader(trainset, batch_size=4,
-                                              shuffle=True, num_workers=2)
-    
-    testset = torchvision.datasets.CIFAR10(root='./data', train=False,
-                                           download=True, transform=transform)
-    testloader = torch.utils.data.DataLoader(testset, batch_size=4,
-                                             shuffle=False, num_workers=2)
-    
-    classes = ('plane', 'car', 'bird', 'cat',
-               'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
-    
-    return trainloader, testloader, classes
-
 
 def numpy_to_tensor(v):
     u = torch.zeros(v.shape[0])

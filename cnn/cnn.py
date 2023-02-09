@@ -1,31 +1,21 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Mon Oct 26 17:55:33 2020
-
-@author: YaronWinter
-"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import embedding
-import utils
+import utils.embedding as embedder
+from utils import config as params
 import numpy as np
 
-class CNN_NLP(nn.Module):
+class CNN(nn.Module):
     def __init__(self,
-                 w2v_file,
-                 num_classes,
-                 windows=[1, 2, 3, 5],
-                 width=50,
-                 dropout=0.5,
-                 freeze_embedding=True):
-        super(CNN_NLP, self).__init__()
+                 config: dict,
+                 num_classes):
+        super(CNN, self).__init__()
 
-        print('Freeze embedding matrix = ' + str(freeze_embedding))
+        print('Freeze embedding matrix = ' + str(config[params.FREEZE_EMBEDDING]))
         print('load embedding model')
-        self.w2v_model = embedding.load_embedding_model(w2v_file)
+        self.w2v_model = embedder.load_embedding_model(config[params.EMBED_WORDS_FILE])
         print('\tw2v original: ' + str(self.w2v_model.vectors.shape))
-        added_words = [utils.PAD_LABEL, utils.UNK_LABEL]
+        added_words = [config[params.PAD_LABEL], config[params.UNK_LABEL]]
         added_vecs = [np.zeros(self.w2v_model.vector_size) for i in range(len(added_words))]
         self.w2v_model.add_vectors(added_words, added_vecs)
         print('\tw2v after padding: ' + str(self.w2v_model.vectors.shape))
@@ -34,19 +24,21 @@ class CNN_NLP(nn.Module):
         # With pretrained embeddings
         self.embedding = nn.Embedding.from_pretrained(
             torch.FloatTensor(self.w2v_model.vectors),
-            padding_idx = self.w2v_model.key_to_index[utils.PAD_LABEL],
-            freeze=freeze_embedding)
+            padding_idx = self.w2v_model.key_to_index[config[params.PAD_LABEL]],
+            freeze=config[params.FREEZE_EMBEDDING])
         
         print('allocate convolution  layers')
+        filter_width = config[params.CNN_OUT_CHANNELS]
+        kernels = config[params.CNN_KERNELS]
         self.convs = nn.ModuleList([
             nn.Conv1d(in_channels=self.w2v_model.vectors.shape[1],
-                      out_channels=width,
-                      kernel_size=windows[i])
-            for i in range(len(windows))
+                      out_channels=filter_width,
+                      kernel_size=kernel)
+            for kernel in kernels
         ])
 
-        self.fc = nn.Linear(width * len(windows), num_classes)
-        self.dropout = nn.Dropout(p=dropout)
+        self.fc = nn.Linear(filter * len(kernels), num_classes)
+        self.dropout = nn.Dropout(p=config[params.DROPOUT])
 
     def forward(self, input_ids):
         # input_ids = [#batch size, sentence len]

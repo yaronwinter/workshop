@@ -1,57 +1,23 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Nov 15 13:23:12 2020
-
-@author: YaronWinter
-"""
-from cnn_nlp import CNN_NLP
+from cnn import cnn
 import pandas as pd
 import numpy as np
 import random
 import torch
 import time
 import copy
-import utils
-
-DROPOUT = 0.5
-MAX_LOSS_FOR_BEST = 0.1
-MIN_EPOCHS_FOR_BEST = 10
-
-OUT_FILE_NAME = "/home/yaron/torch_env/ws/hiredscore/logs/cnn_imdb2.txt"
-DATA_FOLDER = "/home/yaron/torch_env/ws/hiredscore/embed/data/"
-FILTER_WIDTH = 100
-FILTER_WINDOWS = [3,4,5]
-FREEZE_W2V = True
-LEARNING_RATE = 0.25
-LOSS_FUNCTION = utils.CROSS_ENTROP_LOSS
-NUM_EPOCHS = 20
-NUM_LOOPS = 1
-OPTIMIZER_NAME = utils.ADADELATA_OPT
-SEED_VALUE = -1
-TEST_SET = "imdb_test.csv"
-TRAIN_SET = "imdb_train.csv"
-VALIDATION_SET = "validate_set.csv"
-W2V_MODEL = "/home/yaron/torch_env/ws/hiredscore/embed/model/w2v.model"
+from utils import config as params
 
 class CNN_Trainer:
     def __init__(self):
         self.cnn_model = None
         self.opt_model = None
 
-    def train(self, out_file):
+    def train(self, config: dict) -> tuple:
         print('train_cnn_nlp - start')
-        
-        print('allocate the model')
-        if self.cnn_model is not None:
-            del self.cnn_model
-            
-        train_df = pd.read_csv(DATA_FOLDER + TRAIN_SET)
-        self.cnn_model = CNN_NLP(W2V_MODEL,
-                                 train_df[utils.SENTIMENT_COL].nunique(),
-                                 windows=FILTER_WINDOWS,
-                                 width=FILTER_WIDTH,
-                                 dropout=DROPOUT,
-                                 freeze_embedding=FREEZE_W2V)
+        log_file = open(config[params.LOG_FILE_NAME], "w", encoding="utf-8")
+
+        train_df = pd.read_csv(config[params.TRAIN_SET])
+        self.cnn_model = cnn.CNN(config, train_df.sentiment.unique().shape[0])
         
         print('set optimizer & loss')
         best_val_acc = 0
