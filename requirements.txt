@@ -1,0 +1,8 @@
+scikit-learn
+torch
+spacy
+pandas
+gensim
+numpy
+beautifulsoup4
+nltk
