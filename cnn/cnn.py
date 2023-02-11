@@ -15,7 +15,7 @@ class CNN(nn.Module):
         print('load embedding model')
         self.w2v_model = embedder.load_embedding_model(config[params.EMBED_WORDS_FILE])
         print('\tw2v original: ' + str(self.w2v_model.vectors.shape))
-        added_words = [config[params.PAD_LABEL], config[params.UNK_LABEL]]
+        added_words = [params.PAD_LABEL, params.UNK_LABEL]
         added_vecs = [np.zeros(self.w2v_model.vector_size) for i in range(len(added_words))]
         self.w2v_model.add_vectors(added_words, added_vecs)
         print('\tw2v after padding: ' + str(self.w2v_model.vectors.shape))
@@ -24,7 +24,7 @@ class CNN(nn.Module):
         # With pretrained embeddings
         self.embedding = nn.Embedding.from_pretrained(
             torch.FloatTensor(self.w2v_model.vectors),
-            padding_idx = self.w2v_model.key_to_index[config[params.PAD_LABEL]],
+            padding_idx = self.w2v_model.key_to_index[params.PAD_LABEL],
             freeze=config[params.FREEZE_EMBEDDING])
         
         print('allocate convolution  layers')
@@ -37,7 +37,7 @@ class CNN(nn.Module):
             for kernel in kernels
         ])
 
-        self.fc = nn.Linear(filter * len(kernels), num_classes)
+        self.fc = nn.Linear(filter_width * len(kernels), num_classes)
         self.dropout = nn.Dropout(p=config[params.DROPOUT])
 
     def forward(self, input_ids):

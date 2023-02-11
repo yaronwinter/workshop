@@ -6,15 +6,15 @@ import re
 from pathlib import Path
 
 #Removing the html strips
-def strip_html(text):
+def strip_html(text: str) -> str:
     soup = BeautifulSoup(text, "html.parser")
     return soup.get_text()
 
 #Removing the square brackets
-def remove_between_square_brackets(text):
+def remove_between_square_brackets(text: str) -> str:
     return re.sub('\[[^]]*\]', '', text)
 
-def regexp_split(token):
+def regexp_split(token: str) -> list:
     res = regexp_span_tokenize(token, re.compile("[.,-]"))
     text_len = len(token)
     
@@ -35,7 +35,7 @@ def regexp_split(token):
         
     return tokens
       
-def tweet_tokenize(text):
+def tweet_tokenize(text: str) -> list:
     ttweet = TweetTokenizer()
     res = ttweet.tokenize(text)
     
@@ -47,14 +47,14 @@ def tweet_tokenize(text):
     
 
 #Tokenize the text.
-def tokenize_text(text):
+def tokenize_text(text: str) -> str:
     text = strip_html(text)
     text = remove_between_square_brackets(text)
     tokens = tweet_tokenize(text.lower())
     text = " ".join(tokens)
     return text
 
-def read_folder(folder_name, corpus_file):
+def read_folder(folder_name: str, corpus_file: str):
     texts_folder = Path(folder_name).rglob('*.txt')
     files = [x for x in texts_folder]
     
