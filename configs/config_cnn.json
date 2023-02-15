@@ -6,7 +6,7 @@
     "early_stop_max_no_imp":2,
     "embed_words_file":"/home/yaron/WorkEnv/data/samples/embed.model",
     "freeze_embeding":1,
-    "learning_rate":0.05,
+    "learning_rate":0.1,
     "loss_function":"cross_entropy_loss",
     "log_file_name":"/home/yaron/WorkEnv/logs/cnn_adadelta_lr.txt",
     "min_valid_epochs":10,

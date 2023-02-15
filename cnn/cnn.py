@@ -13,18 +13,15 @@ class CNN(nn.Module):
 
         print('Freeze embedding matrix = ' + str(config[params.FREEZE_EMBEDDING]))
         print('load embedding model')
-        self.w2v_model = embedder.load_embedding_model(config[params.EMBED_WORDS_FILE])
-        print('\tw2v original: ' + str(self.w2v_model.vectors.shape))
         added_words = [params.PAD_LABEL, params.UNK_LABEL]
-        added_vecs = [np.zeros(self.w2v_model.vector_size) for i in range(len(added_words))]
-        self.w2v_model.add_vectors(added_words, added_vecs)
+        self.w2v_model = embedder.Embedded_Words(config[params.EMBED_WORDS_FILE], added_words, config[params.NORM_EMBED_VECS])
         print('\tw2v after padding: ' + str(self.w2v_model.vectors.shape))
 
         print('generate embedding tensor')
-        # With pretrained embeddings
+        # Set the embedding module.
         self.embedding = nn.Embedding.from_pretrained(
             torch.FloatTensor(self.w2v_model.vectors),
-            padding_idx = self.w2v_model.key_to_index[params.PAD_LABEL],
+            padding_idx = self.w2v_model.w2i[params.PAD_LABEL],
             freeze=config[params.FREEZE_EMBEDDING])
         
         print('allocate convolution  layers')

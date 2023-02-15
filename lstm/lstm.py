@@ -1,49 +1,47 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec 15 22:50:06 2020
-
-@author: YaronWinter
-"""
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence
 from torch.nn.utils.rnn import pad_packed_sequence
+from utils import config as params
+from utils import embedding as embedder
 
-from utils import PAD_LABEL
-
-NUM_LAYERS = 1
-BIDIRECTIONAL = True
-
-class LSTM_NLP(nn.Module):
+class LSTM(nn.Module):
     def __init__(self,
-                 vocab,
-                 num_classes,
-                 hidden_dim=128,
-                 dropout=0.5,
-                 freeze=True,
-                 batch_first=True):
+                 config: dict,
+                 num_classes: int):
         # Constructor.
-        super().__init__()
+        super(LSTM, self).__init__()
         
-        # Words Embedding layer.
-        self.embedding = nn.Embedding.from_pretrained(vocab.vectors,
-                                                      padding_idx=vocab.stoi[PAD_LABEL],
-                                                      freeze=freeze)
+        print('Freeze embedding matrix = ' + str(config[params.FREEZE_EMBEDDING]))
+        print('load embedding model')
+        added_words = [params.PAD_LABEL, params.UNK_LABEL]
+        self.w2v_model = embedder.Embedded_Words(config[params.EMBED_WORDS_FILE], added_words, config[params.NORM_EMBED_VECS])
+        print('\tw2v after padding: ' + str(self.w2v_model.vectors.shape))
+
+        print('generate embedding tensor')
+        # Set the embedding module.
+        self.embedding = nn.Embedding.from_pretrained(
+            torch.FloatTensor(self.w2v_model.vectors),
+            padding_idx = self.w2v_model.w2i[params.PAD_LABEL],
+            freeze=config[params.FREEZE_EMBEDDING])
         
         # LSTM layer.
-        self.lstm = nn.LSTM(vocab.vectors.shape[1],
-                            hidden_dim,
-                            num_layers=NUM_LAYERS,
-                            bidirectional=BIDIRECTIONAL,
+        self.batch_first = config[params.BATCH_FIRST]
+        self.hidden_dim = config[params.HIDDEN_DIM]
+        self.bidirectional = bool(config[params.BIDIRECTIONAL])
+        self.lstm = nn.LSTM(self.w2v_model.vectors.shape[1],
+                            self.hidden_dim,
+                            num_layers=config[params.NUM_LAYERS],
+                            bidirectional=self.bidirectional,
                             dropout=0,
-                            batch_first=batch_first)
+                            batch_first=self.batch_first)
         
-        # Set the dropout for the full connected layer.
-        self.dropout = nn.Dropout(dropout)
-        
+        # Set the dropout for the embedding layer and the lstm's output layer.
+        self.dropout = nn.Dropout(config[params.DROPOUT])
+
         # Set the last layer, fully connected.
-        self.fc = nn.Linear(hidden_dim * (2 * BIDIRECTIONAL), num_classes)
+        self.fc = nn.Linear(self.hidden_dim * (2 if self.bidirectional else 1), num_classes)
         
     # The forward function.
     def forward(self, texts, lengths):
@@ -57,7 +55,7 @@ class LSTM_NLP(nn.Module):
         #print('embed text = ' + str(embed_text.shape))
         
         # Get the packed sentences.
-        packed_text = pack_padded_sequence(embed_text, lengths, batch_first=True)
+        packed_text = pack_padded_sequence(embed_text, lengths, batch_first=self.batch_first)
         # packed_text = [[sum lengths, embed dim], [#different lengths]]
         #print('packed text data = ' + str(packed_text.data.shape))
         #print('packed text batch sizes = ' + str(packed_text.batch_sizes.shape))
@@ -72,7 +70,7 @@ class LSTM_NLP(nn.Module):
         #print('cell = ' + str(cell.shape))
         
         # unpack the output.
-        pad_packed_output, _ = pad_packed_sequence(packed_output, batch_first=True)
+        pad_packed_output, _ = pad_packed_sequence(packed_output, batch_first=self.batch_first)
         # pad_packed_output = [batch size, sentence length, hidden dim * 2]
         
         # Prmute the output before pooling.
@@ -88,9 +86,5 @@ class LSTM_NLP(nn.Module):
         # logits = [batch size, #classes]
         #print('logits = ' + str(logits.shape))
         
-        
-        # Perform non linearity on the final results.
-        res = torch.softmax(logits, dim=1)
-        
-        return res
+        return logits
     

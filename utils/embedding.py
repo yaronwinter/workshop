@@ -1,10 +1,11 @@
 from gensim.models.callbacks import CallbackAny2Vec
 from gensim.models import Word2Vec
 from gensim.models import KeyedVectors
-from gensim.models.keyedvectors import KeyedVectors as EmbeddedModel
 from gensim.test.utils import datapath
 from gensim.models.word2vec import LineSentence
 import utils.config as params
+import numpy as np
+from tqdm import tqdm
 
 class EpochLogger(CallbackAny2Vec):
     def __init__(self):
@@ -17,7 +18,41 @@ class EpochLogger(CallbackAny2Vec):
         print("Epoch #{} End".format(self.epoch))
         self.epoch += 1
 
-def train_word_embedding(train_corpus: str, config: dict) -> EmbeddedModel:
+class Embedded_Words:
+    def __init__(self, model_file: str, added_pads: list, norm: bool) -> None:
+        self.vectors, self.w2i, self.i2w = self.read_model(model_file, added_pads, norm)
+
+    def read_model(self, model_file: str, added_pads: list, norm: bool) -> tuple:
+        with open(model_file, "r", encoding="utf-8") as f:
+            lines = [x.strip() for x in f.readlines()]
+
+        print(model_file)
+        print(len(lines))
+        print(lines[0])
+
+        num_word, dim = [int(x) for x in lines[0].split()]
+        vectors = np.zeros((num_word + len(added_pads), dim))
+        w2i = {}
+        i2w = {}
+        for line in tqdm(lines[1:]):
+            tokens = line.split()
+            word = tokens[0]
+            word_index = len(w2i)
+            v = np.array([float(x) for x in tokens[1:]])
+            if norm:
+                v = v / np.linalg.norm(v)
+            vectors[word_index] = v
+            w2i[word] = word_index
+            i2w[word_index] = word
+
+        for word in added_pads:
+            word_index = len(w2i)
+            w2i[word] = word_index
+            i2w[word_index] = word
+        
+        return vectors, w2i, i2w
+
+def train_word_embedding(train_corpus: str, config: dict):
     sentences = LineSentence(datapath(train_corpus))
     logger = EpochLogger()
     w2v_model = Word2Vec(sentences,
@@ -35,10 +70,19 @@ def train_word_embedding(train_corpus: str, config: dict) -> EmbeddedModel:
     return w2v_model
 
 
-def load_embedding_model(model_path: str) -> EmbeddedModel:
-    w2v_model = KeyedVectors.load_word2vec_format(datapath(model_path))
-    w2v_model.init_sims()
-    return w2v_model
+def load_embedding_model(model_path: str):
+    return KeyedVectors.load_word2vec_format(datapath(model_path))
 
-def save_model(model: EmbeddedModel, file_path: str):
+def load_and_add(config: dict, added_pads: list):
+    model = load_embedding_model(config[params.EMBED_WORDS_FILE])
+    if len(added_pads) == 0:
+        model.fill_norms()
+        return model
+
+    added_vecs = [np.random.random(model.vector_size) for i in range(len(added_pads))]
+    model.add_vectors(added_pads, added_vecs)
+    model.fill_norms()
+    return model
+
+def save_model(model, file_path: str):
     model.wv.save_word2vec_format(file_path)
