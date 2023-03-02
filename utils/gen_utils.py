@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Sep 30 19:54:55 2020
-
-@author: YaronWinter
-"""
 from sklearn.feature_extraction.text import CountVectorizer
 import numpy as np
 import torch
@@ -48,12 +42,12 @@ def break_by_batch_size(df: pd.DataFrame, config: dict) -> list:
     while row_index < num_rows:
         num_words = 0
         curr_df = copy.deepcopy(header)
-        while num_words < batch_size:
+        while num_words < batch_size and row_index < num_rows:
             actual_length = min(max_valid_length, lengths[row_index])
             num_words += actual_length
             curr_df[config[params.TOKENS_COL]].append(tokens[row_index][:max_valid_length])
             curr_df[config[params.LABEL_COL]].append(labels[row_index])
-            curr_df[config[params.LENGTH_COL]].append[lengths[row_index]]
+            curr_df[config[params.LENGTH_COL]].append(actual_length)
             row_index += 1
         
         df_list.append(pd.DataFrame(curr_df))
@@ -103,10 +97,11 @@ def get_end_frame(prev_start: int, prev_end: int, occurrences: list, config: dic
     return total_occurs, (end_frame + 1)
 
 def df_to_dataloader(df: pd.DataFrame, w2v_model: Embedded_Words, config: dict, sampling_type: str) -> DataLoader:
-    texts = df[config[params.TOKENS_COL]].values.tolist()
-    labels = df[config[params.LABEL_COL]].values.tolist()
-    lengths = df[config[params.LENGTH_COL]].to_list()
-    max_len = df[config[params.TOKENS_COL]].map(len).max()
+    sorted_df = df.sort_values(by=config[params.LENGTH_COL], axis=0, ascending=False, ignore_index=True)
+    texts = sorted_df[config[params.TOKENS_COL]].values.tolist()
+    labels = sorted_df[config[params.LABEL_COL]].values.tolist()
+    lengths = sorted_df[config[params.LENGTH_COL]].to_list()
+    max_len = sorted_df[config[params.TOKENS_COL]].map(len).max()
 
     indexed_texts = []
     drop_word_prob = config[params.DROP_WORD]
@@ -124,8 +119,8 @@ def df_to_dataloader(df: pd.DataFrame, w2v_model: Embedded_Words, config: dict, 
         indexed_texts.append(ids)
         
     inputs, labels, lengths = tuple(torch.tensor(data) for data in [indexed_texts, labels, lengths])
-    
-    data = TensorDataset(inputs, labels)
+
+    data = TensorDataset(inputs, labels, lengths)
     
     if sampling_type == params.RANDOM_SAMPLING:
         sampler = RandomSampler(data)
@@ -194,6 +189,8 @@ def get_loss_function(func_name: str):
         loss_func = nn.CrossEntropyLoss()
     elif func_name == params.BCE_LOSS:
         loss_func = nn.BCELoss()
+    elif func_name == params.NLLLOSS:
+        loss_func = nn.NLLLoss()
     else:
         print('Wrong loss function name: ' + func_name)
         

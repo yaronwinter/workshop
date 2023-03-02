@@ -9,7 +9,6 @@ import time
 import copy
 from utils import config as params
 from utils import gen_utils
-from tqdm import tqdm
 
 class Trainer:
     def __init__(self):
@@ -28,10 +27,9 @@ class Trainer:
         print('set optimizer & loss')
         best_val_acc = 0
         best_epoch = -1
-        optimizer = gen_utils.get_optimizer(config[params.OPTIMIZER_NAME],
-                                        pending_model.parameters(),
-                                        config[params.LEARNING_RATE])
-        loss_func = gen_utils.get_loss_function(config[params.LOSS_FUNCTION])
+        optimizer = gen_utils.get_optimizer(pending_model.parameters(), config)
+        loss_func_name = config[params.LOSS_FUNCTION]
+        loss_func = gen_utils.get_loss_function(loss_func_name)
         
         print('get data loaders')
         sampling = params.RANDOM_SAMPLING if seed_value < 0 else params.SEQUENTIAL_SAMPLING
@@ -39,15 +37,16 @@ class Trainer:
         dataloaders = gen_utils.get_data_loaders(train_df, 
                                              pending_model.get_w2v_model(),
                                              config,
-                                             config[params.SAMPLING_TYPE])
+                                             config[params.SAMPLING_TYPE],
+                                             gen_utils.break_df_by_len)
         
         num_epochs = config[params.NUM_EPOCHS]
         print('start training loops. #epochs = ' + str(num_epochs))
-        print(f"{'Epoch':^7} | {'Train Loss':^12} | {'Train Acc':^9} | {'Val Acc':^9} | {'Elapsed':^9}")
-        print("-"*30)  
+        print(f"{'Epoch':^7} | {'Train Loss':^12} | {'Train Acc':^11} | {'Test Acc':^10} | {'Val Acc':^9} | {'Elapsed':^9}")
+        print("-"*50)  
         
-        log_file.write(f"{'Epoch':^7} | {'Train Loss':^12} | {'Train Acc':^9} | {'Val Acc':^9} | {'Elapsed':^9}\n")
-        log_file.write("-"*30 + '\n')  
+        log_file.write(f"{'Epoch':^7} | {'Train Loss':^12} | {'Train Acc':^11} | {'Test Acc':^10} | {'Val Acc':^9} | {'Elapsed':^9}\n")
+        log_file.write("-"*50 + "\n")
         log_file.flush()
             
         
@@ -61,9 +60,9 @@ class Trainer:
             
             pending_model.train()
             
-            for dataloader in tqdm(dataloaders):
-                for step, batch in tqdm(enumerate(dataloader)):
-                    ids, labels = tuple(t for t in batch)
+            for dataloader in dataloaders:
+                for batch in dataloader:
+                    ids, labels, _ = tuple(t for t in batch)
                     
                     optimizer.zero_grad()
                     
@@ -81,12 +80,14 @@ class Trainer:
             epoch_time = time.time() - epoch_start_time
             
             # Validation test.
-            val_acc, val_time = tester.test(pending_model, config[params.VALIDATION_SET], config)
-            train_acc, val_time = tester.test(pending_model, config[params.TRAIN_SET], config)
+            val_acc, _ = tester.test(pending_model, config[params.VALIDATION_SET], config)
+            train_acc, _ = tester.test(pending_model, config[params.TRAIN_SET], config)
+            test_acc, _ = tester.test(pending_model, config[params.TEST_SET], config)
             val_acc *= 100
             train_acc *= 100
-            print(f"{epoch:^7} | {avg_loss:^12.6f} | {train_acc:^9.2f} | {val_acc:^9.2f} | {epoch_time:^9.2f}")
-            log_file.write(f"{epoch:^7} | {avg_loss:^12.6f} | {train_acc:^9.2f} | {val_acc:^9.2f} | {epoch_time:^9.2f}\n")
+            test_acc *= 100
+            print(f"{epoch:^7} | {avg_loss:^12.6f} | {train_acc:^9.2f} | {test_acc:^9.2f} |  {val_acc:^9.4f} | {epoch_time:^9.2f}")
+            log_file.write(f"{epoch:^7} | {avg_loss:^12.6f}  {train_acc:^9.2f} | {test_acc:^9.2f} |  {val_acc:^9.4f} | {epoch_time:^9.2f}\n")
             log_file.flush()
                 
             if avg_loss < min_loss:
@@ -113,6 +114,8 @@ class Trainer:
                 best_epoch = epoch
         
         print('train_cnn_nlp - end')
+        print("Best Epoch: " + str(epoch))
+        log_file.write("Best Epoch: " + str(epoch) + "\n")
         end_train(pending_model, optimal_model, config, log_file)
         log_file.close()
         return pending_model, optimal_model, best_epoch

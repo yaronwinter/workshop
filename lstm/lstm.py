@@ -6,6 +6,8 @@ from torch.nn.utils.rnn import pad_packed_sequence
 from utils import config as params
 from utils import embedding as embedder
 
+BATCH_FIRST = True
+
 class LSTM(nn.Module):
     def __init__(self,
                  config: dict,
@@ -27,50 +29,42 @@ class LSTM(nn.Module):
             freeze=config[params.FREEZE_EMBEDDING])
         
         # LSTM layer.
-        self.batch_first = config[params.BATCH_FIRST]
-        self.hidden_dim = config[params.HIDDEN_DIM]
-        self.bidirectional = bool(config[params.BIDIRECTIONAL])
+        hidden_dim = config[params.HIDDEN_DIM]
+        bidirectional = bool(config[params.BIDIRECTIONAL])
         self.lstm = nn.LSTM(self.w2v_model.vectors.shape[1],
-                            self.hidden_dim,
+                            hidden_dim,
                             num_layers=config[params.NUM_LAYERS],
-                            bidirectional=self.bidirectional,
+                            bidirectional=bidirectional,
                             dropout=0,
-                            batch_first=self.batch_first)
+                            batch_first=BATCH_FIRST)
         
         # Set the dropout for the embedding layer and the lstm's output layer.
         self.dropout = nn.Dropout(config[params.DROPOUT])
 
         # Set the last layer, fully connected.
-        self.fc = nn.Linear(self.hidden_dim * (2 if self.bidirectional else 1), num_classes)
+        self.fc = nn.Linear(hidden_dim * (2 if bidirectional else 1), num_classes)
+
+    def embed_text(self, texts: torch.Tensor):
+        return self.dropout(self.embedding(texts))
         
     # The forward function.
-    def forward(self, texts, lengths):
+    def forward(self, embedded_text: torch.Tensor, lengths: torch.Tensor):
         # Get the embedding of the given text.
-        # text = [#batch size, sentence length]
+        # embedded_text = [#batch size, sentence length, embed dim]
         #lengths = [#batch size]
-        #print('text = ' + str(text.shape))
-        #print('lengths = ' + str(lengths.shape))
-        embed_text = self.dropout(self.embedding(texts))
-        # embed_text = [#batch size, sentence length, embed dim]
-        #print('embed text = ' + str(embed_text.shape))
         
         # Get the packed sentences.
-        packed_text = pack_padded_sequence(embed_text, lengths, batch_first=self.batch_first)
-        # packed_text = [[sum lengths, embed dim], [#different lengths]]
-        #print('packed text data = ' + str(packed_text.data.shape))
-        #print('packed text batch sizes = ' + str(packed_text.batch_sizes.shape))
+        packed_text = pack_padded_sequence(embedded_text, lengths, batch_first=BATCH_FIRST)
+        # packed_text = [[sum lengths, embed dim], [#sequence length (#active batch items for ech length)]]
         
         # Call the LSTM layer.
         packed_output, (hidden, cell) = self.lstm(packed_text)
-        # packed output = [[sum lengths, hidden dim], [#different lengths]]
-        # hidden = [1, #batch size, hidden dim]
-        # cell   = [1, #batch size, hidden dim]
-        #print('packed out = ' + str(packed_out.data.shape))
-        #print('hidden = ' + str(hidden.shape))
-        #print('cell = ' + str(cell.shape))
+        # packed output = [[sum lengths, hidden dim], [#sequence length]]
+        # hidden = [1 (2 if bidirectional), #batch size, hidden dim]
+        # cell   = [1 (2 if bidirectional), #batch size, hidden dim]
         
         # unpack the output.
-        pad_packed_output, _ = pad_packed_sequence(packed_output, batch_first=self.batch_first)
+        pad_packed_output, _ = pad_packed_sequence(packed_output, batch_first=BATCH_FIRST)
         # pad_packed_output = [batch size, sentence length, hidden dim * 2]
         
         # Prmute the output before pooling.
@@ -84,7 +78,5 @@ class LSTM(nn.Module):
         # Call the linear full connected layer, after droping out.
         logits = self.fc(torch.squeeze(pooled_output, dim=2))
         # logits = [batch size, #classes]
-        #print('logits = ' + str(logits.shape))
         
         return logits
-    
