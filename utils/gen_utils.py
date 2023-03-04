@@ -96,12 +96,13 @@ def get_end_frame(prev_start: int, prev_end: int, occurrences: list, config: dic
         
     return total_occurs, (end_frame + 1)
 
-def df_to_dataloader(df: pd.DataFrame, w2v_model: Embedded_Words, config: dict, sampling_type: str) -> DataLoader:
+def df_to_dataloader(df: pd.DataFrame, w2v_model: Embedded_Words, config: dict, sampling_type: str, is_labeled: int) -> DataLoader:
     sorted_df = df.sort_values(by=config[params.LENGTH_COL], axis=0, ascending=False, ignore_index=True)
     texts = sorted_df[config[params.TOKENS_COL]].values.tolist()
     labels = sorted_df[config[params.LABEL_COL]].values.tolist()
     lengths = sorted_df[config[params.LENGTH_COL]].to_list()
     max_len = sorted_df[config[params.TOKENS_COL]].map(len).max()
+    labeled = [is_labeled] * len(df)
 
     indexed_texts = []
     drop_word_prob = config[params.DROP_WORD]
@@ -118,9 +119,9 @@ def df_to_dataloader(df: pd.DataFrame, w2v_model: Embedded_Words, config: dict, 
         
         indexed_texts.append(ids)
         
-    inputs, labels, lengths = tuple(torch.tensor(data) for data in [indexed_texts, labels, lengths])
+    inputs, labels, lengths, labeled = tuple(torch.tensor(data) for data in [indexed_texts, labels, lengths, labeled])
 
-    data = TensorDataset(inputs, labels, lengths)
+    data = TensorDataset(inputs, labels, lengths, labeled)
     
     if sampling_type == params.RANDOM_SAMPLING:
         sampler = RandomSampler(data)
@@ -137,13 +138,14 @@ def get_data_loaders(input_df: pd.DataFrame,
                      w2v_model: Embedded_Words,
                      config: dict, 
                      sampling_type: str,
+                     is_labeled: int,
                      break_df_func) -> list:
     input_df[config[params.TOKENS_COL]] = input_df[config[params.TEXT_COL]].apply(lambda x: x.split(' '))
     input_df[config[params.LENGTH_COL]] = input_df[config[params.TOKENS_COL]].map(len)
     df_list = break_df_func(input_df, config)
     dataloaders = []
     for df in df_list:
-        dataloader = df_to_dataloader(df, w2v_model, config, sampling_type)
+        dataloader = df_to_dataloader(df, w2v_model, config, sampling_type, is_labeled)
         dataloaders.append(dataloader)
         
     return dataloaders

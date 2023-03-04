@@ -8,7 +8,7 @@ def test(model: nn.Module, dataloaders: list):
     start_time = time.time()
     model.eval()
     for dl in dataloaders:
-        for texts, labels, lengths in dl:
+        for texts, labels, lengths, _ in dl:
             with torch.no_grad():
                 embed_text = model.embed_text(texts)
                 logits = model(embed_text, lengths)

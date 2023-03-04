@@ -5,6 +5,7 @@ Created on Tue Oct  6 13:08:06 2020
 @author: YaronWinter
 """
 
+import random
 import  numpy as np
 import pandas as pd
 from pathlib import Path
@@ -14,10 +15,39 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.neural_network import MLPClassifier
 from sklearn.svm import LinearSVC
-from utils import gen_utils
+from utils import text_utils
 from utils import config as params
 
 BOW_TYPE = 'bow'
+UNLABEL_CODE = -1
+
+def generate_unlabeled_set(config: dict):
+    df = pd.read_csv(config[params.TRAIN_SET])
+    unlabeled_df = pd.read_csv(config[params.UNLABELED_TEXTS_FOLDER])
+    unlabeled_texts = unlabeled_df[config[params.TEXT_COL]].to_list()
+    random.shuffle(unlabeled_texts)
+    df[config[params.LENGTH_COL]] = df[config[params.TEXT_COL]].apply(lambda x: len(x.split()))
+
+    length_factor = config[params.UNLABELED_LENGTH_FACTOR]
+    max_texts_number = len(df) * config[params.UNLABELED_MAX_ITEMS_FACTOR]
+    mean_labeled_words = df[config[params.LENGTH_COL]].mean() * length_factor
+    texts = []
+    labels = []
+
+    print("mean_labeled_words = " + str(mean_labeled_words))
+    print("max_texts_number = " + str(max_texts_number))
+
+    for text in tqdm(unlabeled_texts):
+        if len(text.split()) > mean_labeled_words:
+            continue
+        texts.append(text)
+        labels.append(UNLABEL_CODE)
+        if len(texts) > max_texts_number:
+            break
+
+    unlabeled_df = pd.DataFrame({config[params.TEXT_COL]: texts, config[params.LABEL_COL]: labels})
+    unlabeled_df.to_csv(config[params.UNLABELED_SET])
+
 
 def read_folder(folder_name: str, label: str) -> tuple:
     texts = []
@@ -33,7 +63,7 @@ def read_folder(folder_name: str, label: str) -> tuple:
         f.close()
         
         for line in lines:
-            line = gen_utils.tokenize_text(line)
+            line = text_utils.tokenize_text(line)
             if len(text) > 0:
                 text += ' '
             text += line

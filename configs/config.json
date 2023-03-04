@@ -4,6 +4,7 @@
     "cnn_out_channels":100,
     "dropout":0.5,
     "early_stop_max_no_imp":2,
+    "embed_train_corpus": "home/yaron/WorkEnv/data/samples/embed_corpus.txt",
     "embed_words_file":"/home/yaron/WorkEnv/data/samples/embed.model",
     "freeze_embeding":1,
     "learning_rate":0.05,
