@@ -12,6 +12,7 @@ def test(model: nn.Module, test_set: str, config: dict) -> tuple:
                                          model.get_w2v_model(),
                                          config,
                                          params.SEQUENTIAL_SAMPLING,
+                                         True,
                                          gen_utils.break_df_by_len)
     
     corrects = 0
@@ -20,7 +21,7 @@ def test(model: nn.Module, test_set: str, config: dict) -> tuple:
     model.eval()
     for dataloader in dataloaders:
         for data in dataloader:
-            ids, labels, _ = data
+            ids, labels, _, _ = data
             with torch.no_grad():
                 logits = model(ids)
             preds = torch.argmax(logits, dim=1)

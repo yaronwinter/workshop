@@ -1,12 +1,13 @@
 {
    "embed_cbow_mean":1,
-   "embed_min_count":5,
+   "embed_min_count":4,
    "embed_ns_exp":0.75,
    "embed_num_epochs":7,
    "embed_num_negs":20,
    "embed_num_workers":3,
    "embed_skip_grams":1,
-   "embed_vec_dim":256,
+   "embed_train_corpus": "/home/yaron/WorkEnv/data/samples/embed_corpus.txt",
+   "embed_vec_dim":768,
    "embed_win_width":5,
    "embed_words_file":"/home/yaron/WorkEnv/data/samples/embed.model"
 }

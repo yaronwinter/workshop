@@ -26,7 +26,9 @@ class Trainer:
         
         print('set optimizer & loss')
         best_val_acc = 0
-        best_epoch = -1
+        best_val_epoch = -1
+        best_test_acc = 0
+        best_test_epoch = -1
         optimizer = gen_utils.get_optimizer(pending_model.parameters(), config)
         loss_func_name = config[params.LOSS_FUNCTION]
         loss_func = gen_utils.get_loss_function(loss_func_name)
@@ -38,6 +40,7 @@ class Trainer:
                                              pending_model.get_w2v_model(),
                                              config,
                                              config[params.SAMPLING_TYPE],
+                                             True,
                                              gen_utils.break_df_by_len)
         
         num_epochs = config[params.NUM_EPOCHS]
@@ -62,7 +65,7 @@ class Trainer:
             
             for dataloader in dataloaders:
                 for batch in dataloader:
-                    ids, labels, _ = tuple(t for t in batch)
+                    ids, labels, _, _ = tuple(t for t in batch)
                     
                     optimizer.zero_grad()
                     
@@ -110,15 +113,21 @@ class Trainer:
             
             if val_acc > best_val_acc:
                 best_val_acc = val_acc
+                best_val_epoch = epoch
                 optimal_model = copy.deepcopy(pending_model)
-                best_epoch = epoch
+
+            if test_acc > best_test_acc:
+                best_test_acc = test_acc
+                best_test_epoch = epoch
         
         print('train_cnn_nlp - end')
-        print("Best Epoch: " + str(epoch))
-        log_file.write("Best Epoch: " + str(epoch) + "\n")
+        print("Best Val Acc = {:.2f}".format(best_val_acc) + ", best epoch = " + str(best_val_epoch))
+        print("Best Test Acc = {:.2f}".format(best_test_acc) + ", best epoch = " + str(best_test_epoch))
+        log_file.write("Best Val Acc = {:.2f}".format(best_val_acc) + ", best epoch = " + str(best_val_epoch) + "\n")
+        log_file.write("Best Test Acc = {:.2f}".format(best_test_acc) + ", best epoch = " + str(best_test_epoch) + "\n")
         end_train(pending_model, optimal_model, config, log_file)
         log_file.close()
-        return pending_model, optimal_model, best_epoch
+        return pending_model, optimal_model, best_val_epoch
 
 
 def end_train(last_model: nn.Module, opt_model: nn.Module, config: dict, log_file):

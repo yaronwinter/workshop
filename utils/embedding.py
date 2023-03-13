@@ -52,8 +52,8 @@ class Embedded_Words:
         
         return vectors, w2i, i2w
 
-def train_word_embedding(train_corpus: str, config: dict):
-    sentences = LineSentence(datapath(train_corpus))
+def train_word_embedding(config: dict):
+    sentences = LineSentence(datapath(config[params.EMBED_TRAIN_CORPUS]))
     logger = EpochLogger()
     w2v_model = Word2Vec(sentences,
                         vector_size=config[params.EMBED_VEC_DIM],

@@ -29,14 +29,14 @@ def intersect_strings(s: str, u: str):
 
 def break_by_batch_size(df: pd.DataFrame, config: dict) -> list:
     sorted_df = df.sort_values(by=config[params.LENGTH_COL], axis=0, ascending=False, ignore_index=True)
-    tokens = sorted_df[config[params.TOKENS_COL]].to_list()
     labels = sorted_df[config[params.LABEL_COL]].to_list()
     lengths = sorted_df[config[params.LENGTH_COL]].to_list()
+    texts = sorted_df[config[params.TEXT_COL]].to_list()
     
     df_list = []
     batch_size = config[params.MINI_BATCH_SIZE]
     max_valid_length = config[params.MAX_TRAIN_LENGTH]
-    header = {config[params.TOKENS_COL]:[], config[params.LABEL_COL]:[], config[params.LENGTH_COL]:[]}
+    header = {config[params.TEXT_COL]:[], config[params.LABEL_COL]:[], config[params.LENGTH_COL]:[]}
     row_index = 0
     num_rows = len(labels)
     while row_index < num_rows:
@@ -45,7 +45,10 @@ def break_by_batch_size(df: pd.DataFrame, config: dict) -> list:
         while num_words < batch_size and row_index < num_rows:
             actual_length = min(max_valid_length, lengths[row_index])
             num_words += actual_length
-            curr_df[config[params.TOKENS_COL]].append(tokens[row_index][:max_valid_length])
+            text = texts[row_index]
+            tokens = text.split()
+            text = " ".join(tokens[:max_valid_length])
+            curr_df[config[params.TEXT_COL]].append(text)
             curr_df[config[params.LABEL_COL]].append(labels[row_index])
             curr_df[config[params.LENGTH_COL]].append(actual_length)
             row_index += 1
@@ -98,18 +101,19 @@ def get_end_frame(prev_start: int, prev_end: int, occurrences: list, config: dic
 
 def df_to_dataloader(df: pd.DataFrame, w2v_model: Embedded_Words, config: dict, sampling_type: str, is_labeled: int) -> DataLoader:
     sorted_df = df.sort_values(by=config[params.LENGTH_COL], axis=0, ascending=False, ignore_index=True)
-    texts = sorted_df[config[params.TOKENS_COL]].values.tolist()
+    texts = sorted_df[config[params.TEXT_COL]].values.tolist()
     labels = sorted_df[config[params.LABEL_COL]].values.tolist()
     lengths = sorted_df[config[params.LENGTH_COL]].to_list()
-    max_len = sorted_df[config[params.TOKENS_COL]].map(len).max()
+    max_len = sorted_df[config[params.LENGTH_COL]].max()
     labeled = [is_labeled] * len(df)
 
     indexed_texts = []
     drop_word_prob = config[params.DROP_WORD]
-    for sentence in texts:
-        sentence += [params.PAD_LABEL] * (max_len - len(sentence))
+    for text in texts:
+        tokens = text.split()
+        tokens += [params.PAD_LABEL] * (max_len - len(tokens))
         ids = []
-        for word in sentence:
+        for word in tokens:
             if word not in w2v_model.w2i:
                 ids.append(w2v_model.w2i[params.UNK_LABEL])
             elif np.random.random() < drop_word_prob:
@@ -140,8 +144,7 @@ def get_data_loaders(input_df: pd.DataFrame,
                      sampling_type: str,
                      is_labeled: int,
                      break_df_func) -> list:
-    input_df[config[params.TOKENS_COL]] = input_df[config[params.TEXT_COL]].apply(lambda x: x.split(' '))
-    input_df[config[params.LENGTH_COL]] = input_df[config[params.TOKENS_COL]].map(len)
+    input_df[config[params.LENGTH_COL]] = input_df[config[params.TEXT_COL]].apply(lambda x: len(x.split()))
     df_list = break_df_func(input_df, config)
     dataloaders = []
     for df in df_list:
