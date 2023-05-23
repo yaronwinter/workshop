@@ -15,8 +15,8 @@ PERMUTATIONS = [
 ]
 
 PERMUTATION_LENGTH = 128
-MIN_VALID_DEPTH = 5
-MAX_SEARCH_DEPTH = 10
+MIN_VALID_DEPTH = 7
+MAX_SEARCH_DEPTH = 15
 
 PERMUTATIONS = [s.lower() for s in PERMUTATIONS]
 
@@ -24,9 +24,10 @@ def find_permutation_map(lexicon_file: str) -> dict:
     correct_sub_path = CorrectSubPath(depth=-1, already_mapped={})
 
     with open(lexicon_file, "r", encoding="utf-8") as f:
-        lexicon = set([word.strip() for word in f.readlines()])
+        lexicon = set([x.strip() for x in f.readlines()])
 
     log_file = open("debug.txt", "w", encoding="utf-8")
+    log_file.write("Lex Size = " + str(len(lexicon)) + "\n\n")
     while correct_sub_path.depth < (PERMUTATION_LENGTH - 1):
         curr_pending_path = PendingSubPath(depth=correct_sub_path.depth, no_match_depth=0, already_mapped=correct_sub_path.already_mapped, matches=[])
 
@@ -34,7 +35,7 @@ def find_permutation_map(lexicon_file: str) -> dict:
         pending_sub_path = construct_pending_path(prev_valid_depth=correct_sub_path.depth, prev_sub_path=curr_pending_path, lexicon=lexicon, debug_file=log_file)
         if pending_sub_path is None:
             log_file.close()
-            return None
+            return correct_sub_path
         
         correct_sub_path.depth = pending_sub_path.total_depth
         correct_sub_path.already_mapped = copy.deepcopy(pending_sub_path.already_mapped)
@@ -83,6 +84,7 @@ def construct_pending_path(prev_valid_depth: int, prev_sub_path: PendingSubPath,
         return None
     
     already_mapped = set(prev_sub_path.already_mapped.values())
+    debug_file.write("")
     for i in range(PERMUTATION_LENGTH):
         if i in already_mapped:
             continue
