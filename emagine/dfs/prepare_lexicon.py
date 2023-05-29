@@ -1,6 +1,8 @@
 import pandas as pd
 import re
 
+# Number of top frequency, per length, words to leave
+# in the lexicon.
 VALID_LENGTH_AMOUNTS = {
     2: 50,
     3: 400,
