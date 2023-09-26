@@ -6,10 +6,7 @@ import pandas as pd
 from prosodic import utils as prosodic_utils
 import torch
 import torchaudio
-
-BATCH_SIZE = "batch_size"
-RANDOM_SAMPLING= "random"
-SEQUENTIAL_SAMPLING = "sequential"
+import math
 
 def df_to_dataloader(df: pd.DataFrame, config: dict, sampling_type: str) -> DataLoader:
     audio_signal, fs = torchaudio.load(config[prosodic_utils.AUDIO_FILE])
@@ -25,23 +22,23 @@ def df_to_dataloader(df: pd.DataFrame, config: dict, sampling_type: str) -> Data
     for start_time, end_time in zip(start_times, end_times):
         start_ind = int(start_time * fs)
         end_ind = int(end_time * fs)
-        length = end_ind - start_ind
+        length = math.ceil((end_ind - start_ind) / config[prosodic_utils.HOP_LENGTH])
         signal = audio_signal[0, start_ind:end_ind].tolist()
         signal += [0] * (max_length - length)
         
         signals.append(signal)
         lengths.append(length)
         
-    signals, labels, lengths, ids = tuple(torch.tensor(data) for data in [signals, labels, lengths, lengths, ids])
+    signals, labels, lengths, ids = tuple(torch.tensor(data) for data in [signals, labels, lengths, ids])
     data = TensorDataset(signals, labels, lengths, ids)
     
-    if sampling_type == RANDOM_SAMPLING:
+    if sampling_type == prosodic_utils.RANDOM_SAMPLING:
         sampler = RandomSampler(data)
-    elif sampling_type == SEQUENTIAL_SAMPLING:
+    elif sampling_type == prosodic_utils.SEQUENTIAL_SAMPLING:
         sampler = SequentialSampler(data)
     else:
         print('Wrong Sampling Type: ' + sampling_type)
         return None
         
-    dataloader = DataLoader(data, sampler=sampler, batch_size=config[BATCH_SIZE])
+    dataloader = DataLoader(data, sampler=sampler, batch_size=config[prosodic_utils.BATCH_SIZE])
     return dataloader

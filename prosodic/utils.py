@@ -27,14 +27,23 @@ END_PITCH_FIELD = "end_pitch"
 MEAN_PITCH_FIELD = "mean_pitch"
 NAIVE_PREDICTION = "naive_prediction"
 Y_FIELD = "y"
-DNN_DURATION = "dnn_duration"
-DNN_START_TIME = "dnn_start"
-DNN_END_TIME = "dnn_end"
 
 LOWEST_FREQUENCY = 60
 HIGHEST_FREQUENCY = 300
 MIN_SIGNAL_LENGTH = 0.2
 NAIVE_GAP_THRESHOLD = 0.1
+
+N_FFT = "n_fft"
+HOP_LENGTH = "hop_length"
+WINDOW_LENGTH = "win_length"
+BATCH_SIZE = "batch_size"
+HOP_LENGTH = "hop_length"
+RANDOM_SAMPLING= "random"
+SEQUENTIAL_SAMPLING = "sequential"
+
+DNN_DURATION = "dnn_duration"
+DNN_START_TIME = "dnn_start"
+DNN_END_TIME = "dnn_end"
 
 def generate_train_set(raw_set_file: str, audio_file: str) -> pd.DataFrame:
     start_time = time.time()
@@ -93,11 +102,12 @@ def load_compact_train_set(raw_set_file: str) -> pd.DataFrame:
 
     return df
 
-def load_dnn_train_set(raw_set_file: str) -> pd.DataFrame:
+def load_dnn_train_set(raw_set_file: str, config: dict) -> pd.DataFrame:
     start_time = time.time()
     df = pd.read_csv(raw_set_file)
 
     df[DURATION_FIELD] = df[END_TIME_FIELD] - df[START_TIME_FIELD]
+    df[PREV_WORD_START] = df[START_TIME_FIELD].shift().fillna(0)
     
     df[PREV_DIST_FIELD] = df[START_TIME_FIELD] - df[END_TIME_FIELD].shift().fillna(0)
     df[NEXT_DIST_FIELD] = df[START_TIME_FIELD].shift(periods=-1).fillna(df[END_TIME_FIELD].max()) - df[END_TIME_FIELD]

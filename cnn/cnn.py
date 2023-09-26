@@ -5,6 +5,9 @@ import utils.embedding as embedder
 from utils import config as params
 import numpy as np
 
+
+# Ute
+
 class CNN(nn.Module):
     def __init__(self,
                  config: dict,

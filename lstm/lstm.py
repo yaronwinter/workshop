@@ -55,7 +55,7 @@ class LSTM(nn.Module):
         
         # Get the packed sentences.
         packed_text = pack_padded_sequence(embedded_text, lengths, batch_first=BATCH_FIRST)
-        # packed_text = [[sum lengths, embed dim], [#sequence length (#active batch items for ech length)]]
+        # packed_text = [[sum lengths, embed dim], [#sequence length (#active batch items for each length)]]
         
         # Call the LSTM layer.
         packed_output, (hidden, cell) = self.lstm(packed_text)
